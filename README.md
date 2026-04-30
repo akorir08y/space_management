@@ -85,3 +85,43 @@ sudo emergency-recovery.sh
 
 # Monitor disk space manually
 sudo monitor-disk-space.sh
+
+Fixing Held Storage
+When files are deleted but space isn't freed. Here is how to identify and fix this
+
+# Find all deleted files still open by processes
+sudo lsof +L1 | grep -i deleted
+
+# More detailed view
+sudo lsof +L1 | awk '{print $1, $2, $7, $8, $9, $10}' | column -t
+
+# Count total space held
+sudo lsof +L1 | grep -i deleted | awk '{sum+=$7} END {print "Total space held: " sum/1024/1024 " MB"}'
+
+# Show deleted files sorted by size
+sudo lsof +L1 | grep -i deleted | sort -k7 -rn | head -20
+
+# Show only large files (>10MB)
+sudo lsof +L1 | awk '$7 > 10000000 && /deleted/' | sort -k7 -rn
+
+# Get process details for each deleted file
+sudo lsof +L1 | grep -i deleted | while read line; do
+    pid=$(echo $line | awk '{print $2}')
+    size=$(echo $line | awk '{print $7}')
+    file=$(echo $line | awk '{print $9}')
+    echo "PID: $pid, Size: $(numfmt --to=iec $size), File: $file"
+done
+
+
+Make the executable file and run the check held storage script
+
+chmod +x check_held_storage.sh
+sudo ./check_held_storage.sh
+
+Watch for held storage
+
+# Watch command to monitor held files
+watch -n 2 'sudo lsof +L1 | grep -i deleted | awk "{sum+=\$7} END {printf \"Total held: %.2f MB\n\", sum/1024/1024}"'
+
+# Monitor with process details
+watch -n 2 'sudo lsof +L1 | grep -i deleted | head -20'

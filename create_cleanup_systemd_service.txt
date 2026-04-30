@@ -1,0 +1,31 @@
+sudo tee /etc/systemd/system/held-storage-cleanup.service << 'EOF'
+[Unit]
+Description=Clean up held storage by processes
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/clear-held-storage.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Create timer to run every 6 hours
+sudo tee /etc/systemd/system/held-storage-cleanup.timer << 'EOF'
+[Unit]
+Description=Clean held storage every 6 hours
+
+[Timer]
+OnCalendar=*-*-* *:00:00
+RandomizedDelaySec=3600
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable held-storage-cleanup.timer
+sudo systemctl start held-storage-cleanup.timer
