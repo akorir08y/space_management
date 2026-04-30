@@ -1,0 +1,66 @@
+1. Install All Scripts 
+
+# Create scripts directory
+sudo mkdir -p /usr/local/bin
+
+# Download/create each script
+sudo tee /usr/local/bin/cleanup-system.sh < script_content_above
+sudo tee /usr/local/bin/fix-docker-logs.sh < script_content_above
+sudo tee /usr/local/bin/monitor-disk-space.sh < script_content_above
+sudo tee /usr/local/bin/emergency-recovery.sh < script_content_above
+
+# Make executable
+sudo chmod +x /usr/local/bin/*.sh
+
+2. Set Up Cron Jobs
+
+# Edit crontab
+sudo crontab -e
+
+# Add these lines:
+# Daily cleanup at 2 AM
+0 2 * * * /usr/local/bin/cleanup-system.sh --quiet >> /var/log/cleanup.log 2>&1
+
+# Monitor disk every hour
+0 * * * * /usr/local/bin/monitor-disk-space.sh
+
+# Docker log fix weekly on Sunday at 3 AM
+0 3 * * 0 /usr/local/bin/fix-docker-logs.sh >> /var/log/docker-log-fix.log 2>&1
+
+# Emergency check every 30 minutes
+*/30 * * * * [ $(df / --output=pcent | tail -1 | tr -d '% ') -gt 90 ] && /usr/local/bin/emergency-recovery.sh
+
+3. Create Systemd Timer for cleanup
+
+# Create service file
+sudo tee /etc/systemd/system/cleanup.service << 'EOF'
+[Unit]
+Description=System Cleanup Service
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/cleanup-system.sh --quiet
+StandardOutput=journal
+StandardError=journal
+EOF
+
+# Create timer
+sudo tee /etc/systemd/system/cleanup.timer << 'EOF'
+[Unit]
+Description=Run cleanup daily at 2 AM
+Requires=cleanup.service
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+# Enable timer
+sudo systemctl daemon-reload
+sudo systemctl enable cleanup.timer
+sudo systemctl start cleanup.timer
+

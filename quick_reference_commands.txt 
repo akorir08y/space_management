@@ -1,0 +1,17 @@
+# Quick disk check
+df -h && docker system df && journalctl --disk-usage
+
+# Manual emergency cleanup
+sudo /usr/local/bin/emergency-recovery.sh
+
+# Full system cleanup
+sudo /usr/local/bin/cleanup-system.sh
+
+# Check what would be cleaned (dry run)
+sudo /usr/local/bin/cleanup-system.sh --dry-run
+
+# Fix Docker logs specifically
+sudo /usr/local/bin/fix-docker-logs.sh
+
+# Monitor disk space
+watch -n 5 'df -h /; echo ""; docker system df'
